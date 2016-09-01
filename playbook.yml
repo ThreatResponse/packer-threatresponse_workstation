@@ -1,0 +1,82 @@
+- hosts: localhost
+  name: configuration
+  user: ec2-user
+  become: yes
+  become_user: root
+  gather_facts: true
+
+  tasks:
+          -   name: Install python setup tools
+              yum: name=python-setuptools
+              tags: docker
+
+          -   name: Install git
+              yum: name=git
+              tags: docker
+
+          -   name: Install Pypi
+              easy_install: name=pip
+              tags: docker
+
+          -   name: Install docker-py
+              pip: name=docker-py
+              tags: docker
+
+          -   name: Install Docker
+              yum: name=docker state=latest
+              tags: docker
+
+          -   name: Make sure Docker is running
+              service: name=docker state=running
+              tags: docker
+
+          -   name: Install -> Docker-Compose
+              sudo: yes
+              get_url:
+                url=https://github.com/docker/compose/releases/download/1.7.1/docker-compose-Linux-x86_64
+                dest=/usr/local/bin/docker-compose
+                mode=0755
+
+          -  name: setup directory for timesketch
+             sudo: yes
+             file:
+               path=/opt/timesketch
+               state=directory
+               mode=770
+
+          -  name: setup directory for threatresponse
+             sudo: yes
+             file:
+               path=/opt/threatresponse
+               state=directory
+               mode=770
+
+          -  name: checkout latest from git of timesketch
+             sudo: yes
+             git:
+               repo=git@github.com:ThreatResponse/timesketch.git
+               accept_hostkey=true
+               dest=/opt/timesketch
+               update=yes
+
+          -  name: checkout latest from git of ThreatResponse
+             sudo: yes
+             git:
+               repo=git@github.com:ThreatResponse/threatresponse_web.git
+               dest=/opt/threatresponse
+               accept_hostkey=true
+               update=yes
+
+          -  name: pullTimeSketch
+             sudo: yes
+             command: /usr/local/bin/docker-compose pull
+               chdir=/opt/timesketch
+
+          -  name: pullThreatResponse
+             sudo: yes
+             command: /usr/local/bin/docker-compose pull
+               chdir=/opt/threatresponse
+
+          -  name: force boot from xvda
+             sudo: yes
+             replace: dest=/boot/grub/menu.lst regexp='root=LABEL=/' replace='root=/dev/xvda1' backup=yes
